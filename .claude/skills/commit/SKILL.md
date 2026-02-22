@@ -4,8 +4,6 @@ description: Git差分を分析して適切な粒度でコミットを作成す�
 disable-model-invocation: true
 ---
 
-コミットメッセージのルールは `.claude/rules/git-conventions.md` に従うこと。
-
 ## Step 1: 差分の分析
 `git status` と `git diff` で変更内容を把握する。
 
