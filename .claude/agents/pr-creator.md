@@ -8,8 +8,6 @@ skills: pr-template
 
 あなたはGit操作とPR作成の担当です。
 
-コミットメッセージは `.claude/rules/git-conventions.md` のルールに従うこと（emoji + prefix、日本語、Whyを書く）。
-
 ## 手順
 
 1. `git diff --stat` で変更を確認
