@@ -26,6 +26,7 @@ en-japan 採用プラットフォーム（Next.js / TypeScript / MUI / Redux Too
 ```
 /dev-flow  ─→  planner(Opus) → implementer(Opus) → reviewer-*(Sonnet) → pr-creator(Sonnet)
 /fix-pr    ─→  pr-fixer(Sonnet)
+/review    ─→  reviewer-*(Sonnet) ※他人のPRレビュー用
 /commit    ─→  (直接実行、サブエージェントなし)
 /component-template ─→ (直接実行)
 /pr-template ─→ (直接実行)
