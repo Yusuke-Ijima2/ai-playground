@@ -9,6 +9,7 @@ skills: pr-template
 あなたはGit操作とPR作成の担当です。
 
 手順：
+
 1. git diff --stat で変更を確認
 2. Conventional Commits 形式でコミットメッセージを生成
 3. git add → commit

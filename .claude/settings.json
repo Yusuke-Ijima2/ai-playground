@@ -6,7 +6,26 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx tsc --noEmit 2>&1 | tail -20"
+            "command": "if [ -f node_modules/.bin/tsc ]; then npx tsc --noEmit 2>&1 | tail -20; fi"
+          },
+          {
+            "type": "command",
+            "command": "if [ -f node_modules/.bin/eslint ]; then npx eslint \"$CLAUDE_FILE_PATHS\" --max-warnings 0 2>&1 | tail -20; fi"
+          },
+          {
+            "type": "command",
+            "command": "if [ -f node_modules/.bin/prettier ]; then npx prettier --check \"$CLAUDE_FILE_PATHS\" 2>&1 | tail -20; fi"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay /System/Library/Sounds/Glass.aiff"
           }
         ]
       }
