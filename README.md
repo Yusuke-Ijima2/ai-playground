@@ -53,6 +53,31 @@ Step 6: コミット・PR 作成（pr-creator）
 
 ---
 
+### `/fix-pr` — PR レビュー指摘の一括修正
+
+PR のレビューコメントを取得し、指摘ごとに修正・コミット・push まで自動で行う。対応後は rules にも反映する。
+
+```
+/fix-pr
+/fix-pr 142
+/fix-pr #142
+```
+
+**フロー**
+
+```
+Step 1: 指摘コメント取得（gh API）
+Step 2: 修正計画を表で提示     → 確認待ち
+Step 3: 指摘ごとに修正＆コミット（1指摘=1コミット）
+Step 4: push
+Step 5: 指摘コメントにコミットSHA返信
+Step 6: rules 反映候補を提示   → 確認待ち → 反映＆push
+```
+
+`/dev-flow` で PR を作成し、レビューが返ってきたら `/fix-pr` で対応する流れ。
+
+---
+
 ### `/pr-template` — PR 本文の生成
 
 PR 本文を規定フォーマット（概要 / 対応チケット / 変更内容 / 確認方法 / スクリーンショット）で生成する。`/dev-flow` 内でも自動的に使われる。
@@ -75,11 +100,13 @@ PR 本文を規定フォーマット（概要 / 対応チケット / 変更内�
 │   ├── reviewer-perf.md             # レビュワー: パフォーマンス
 │   ├── reviewer-test.md             # レビュワー: テストカバレッジ・品質
 │   ├── reviewer-sec.md              # レビュワー: セキュリティ
-│   └── pr-creator.md                # PR 作成エージェント（Sonnet）
+│   ├── pr-creator.md                # PR 作成エージェント（Sonnet）
+│   └── pr-fixer.md                  # PR 指摘修正エージェント（Sonnet）
 ├── skills/
 │   ├── dev-flow/SKILL.md            # /dev-flow スキル
 │   ├── component-template/SKILL.md  # /component-template スキル
-│   └── pr-template/SKILL.md        # /pr-template スキル
+│   ├── pr-template/SKILL.md        # /pr-template スキル
+│   └── fix-pr/SKILL.md             # /fix-pr スキル
 └── settings.json                    # TypeScript チェックの自動実行フック
 ```
 
