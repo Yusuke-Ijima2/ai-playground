@@ -54,7 +54,7 @@ owner/repo は `gh repo view --json owner,name` で取得する。
 | 2 | console.log残存 | 削除 | fix: remove console.log from useAuth |
 ```
 
-コミットメッセージは Conventional Commits 形式にする。
+コミットメッセージは `.claude/rules/git-conventions.md` のルールに従う（emoji + prefix、日本語）。
 
 **必ず止まって「この計画で修正を進めていいですか？」と確認を求める。**
 ユーザーが修正方針やコミットメッセージを変更したい場合は反映する。
