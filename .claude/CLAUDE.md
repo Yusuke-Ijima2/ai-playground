@@ -13,6 +13,16 @@ en-japan 採用プラットフォーム（Next.js / TypeScript / MUI / Redux Too
 - Redux Toolkit (createAsyncThunk / immer)
 - Jest + React Testing Library
 
+## よく使うコマンド
+
+- 開発サーバー: `npm run dev`
+- ビルド: `npm run build`
+- テスト: `npm test`
+- テスト（単体）: `npm test -- path/to/file`
+- lint: `npx eslint .`
+- 型チェック: `npx tsc --noEmit`
+- フォーマット: `npx prettier --check .`
+
 ## ルール
 
 コーディング規約・Git規約・テスト規約は `.claude/rules/` を参照。自動読み込みされる。

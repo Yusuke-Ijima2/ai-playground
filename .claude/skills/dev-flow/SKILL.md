@@ -1,6 +1,7 @@
 ---
 name: dev-flow
 description: チケットから実装・レビュー・PRまで一気通貫で実行。「/dev-flow PROJ-1234」や「/dev-flow PROJ-1234 from develop」のように使う。
+disable-model-invocation: true
 ---
 
 以下の順番で進めてください：
