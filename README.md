@@ -4,6 +4,66 @@ Claude Code の設定・エージェント・スキルをまとめたプレイ�
 
 ---
 
+## 全体像
+
+### スキルとエージェントの関係
+
+スキル（ユーザーが呼ぶワークフロー）がエージェント（専門家）を組み合わせて処理する構造。
+
+```mermaid
+graph LR
+    subgraph Skills["スキル（ユーザーが呼ぶ）"]
+        DF["/dev-flow"]
+        FP["/fix-pr"]
+        RV["/review"]
+        CM["/commit"]
+        CT["/component-template"]
+        PT["/pr-template"]
+    end
+
+    subgraph Agents["エージェント（専門家）"]
+        PL["planner<br/><small>Opus</small>"]
+        IM["implementer<br/><small>Opus</small>"]
+        RA["reviewer-arch<br/><small>Sonnet</small>"]
+        RP["reviewer-perf<br/><small>Sonnet</small>"]
+        RT["reviewer-test<br/><small>Sonnet</small>"]
+        RS["reviewer-sec<br/><small>Sonnet</small>"]
+        PC["pr-creator<br/><small>Sonnet</small>"]
+        PF["pr-fixer<br/><small>Sonnet</small>"]
+    end
+
+    DF --> PL
+    DF --> IM
+    DF --> RA & RP & RT & RS
+    DF --> PC
+
+    FP --> PF
+
+    RV --> RA & RP & RT & RS
+
+    CM -.- none1["直接実行"]
+    CT -.- none2["直接実行"]
+    PT -.- none3["直接実行"]
+
+    style Skills fill:#1a1a2e,stroke:#e94560,color:#fff
+    style Agents fill:#1a1a2e,stroke:#0f3460,color:#fff
+```
+
+### エージェント一覧
+
+| エージェント | モデル | 役割 | 使えるツール |
+|---|---|---|---|
+| planner | Opus | チケット取得・ブランチ作成・実装計画 | Read, Grep, Glob, Bash, Atlassian MCP |
+| implementer | Opus | 計画に基づくコード実装 | Read, Write, Edit, Bash, Glob, Grep |
+| reviewer-arch | Sonnet | コンポーネント設計・Next.js ベストプラクティス | Read, Grep, Glob |
+| reviewer-perf | Sonnet | 再レンダリング・メモ化・バンドルサイズ | Read, Grep, Glob |
+| reviewer-test | Sonnet | テストカバレッジ・ユーザー操作ベース | Read, Grep, Glob |
+| reviewer-sec | Sonnet | XSS・認証認可・機密データ露出 | Read, Grep, Glob |
+| pr-creator | Sonnet | コミット分割・PR 作成 | Bash, Read |
+| pr-fixer | Sonnet | レビュー指摘の最小修正（1指摘=1コミット） | Read, Write, Bash, Grep, Glob |
+
+---
+
 ## できること
 
 ### `/dev-flow` — チケットから PR まで一気通貫
@@ -19,13 +79,36 @@ Jira チケット番号を渡すだけで、計画・実装・レビュー・PR 
 
 **フロー**
 
-```
-Step 1: 計画（planner）          → 確認待ち
-Step 2: レビュワー選択            → 確認待ち（引数で指定済みならスキップ）
-Step 3: 実装（implementer）
-Step 4: コードレビュー            → Must Fix があれば差し戻し
-Step 5: コード確認               → 確認待ち
-Step 6: コミット・PR 作成（pr-creator）
+```mermaid
+flowchart TD
+    Start(["/dev-flow PROJ-1234"]) --> S1
+
+    S1["Step 1: 計画<br/><b>planner</b><br/>チケット取得・ブランチ作成・計画立案"]
+    S1 --> Approve1{ユーザー承認?}
+    Approve1 -- No --> S1
+
+    Approve1 -- Yes --> S2["Step 2: レビュワー選択<br/><small>引数で指定済みならスキップ</small>"]
+
+    S2 --> S3["Step 3: 実装<br/><b>implementer</b>"]
+
+    S3 --> S4{"Step 4: レビュー"}
+    S4 -- "skip" --> S5
+    S4 -- "1人" --> Single["単独レビュー<br/><b>reviewer-*</b>"]
+    S4 -- "2人+" --> Parallel["Agent Teams 並列実行<br/><b>reviewer-* × N</b>"]
+
+    Single --> MustFix{🔴 Must Fix あり?}
+    Parallel --> MustFix
+
+    MustFix -- Yes --> S3
+    MustFix -- No --> S5
+
+    S5["Step 5: ユーザー確認<br/>差分サマリー・変更一覧を表示"]
+    S5 --> Approve2{PR に進める?}
+    Approve2 -- "修正指示" --> S3
+    Approve2 -- Yes --> S6
+
+    S6["Step 6: PR 作成<br/><b>pr-creator</b><br/>コミット・push・PR 作成"]
+    S6 --> Done([完了])
 ```
 
 **レビュワーの選び方**
@@ -46,12 +129,6 @@ Step 6: コミット・PR 作成（pr-creator）
 
 ---
 
-### `/component-template` — React コンポーネントの雛形生成
-
-「コンポーネント作って」「画面作って」と指示すると、プロジェクト規約（Functional Component / interface / MUI styled）に沿った雛形とテストファイルをセットで生成する。
-
----
-
 ### `/fix-pr` — PR レビュー指摘の一括修正
 
 PR のレビューコメントを取得し、指摘ごとに修正・コミット・push まで自動で行う。対応後は rules にも反映する。
@@ -64,22 +141,155 @@ PR のレビューコメントを取得し、指摘ごとに修正・コミッ�
 
 **フロー**
 
-```
-Step 1: 指摘コメント取得（gh API）
-Step 2: 修正計画を表で提示     → 確認待ち
-Step 3: 指摘ごとに修正＆コミット（1指摘=1コミット）
-Step 4: push
-Step 5: 指摘コメントにコミットSHA返信
-Step 6: rules 反映候補を提示   → 確認待ち → 反映＆push
+```mermaid
+flowchart TD
+    Start(["/fix-pr #142"]) --> S1
+
+    S1["Step 1: 指摘コメント取得<br/><small>gh API で PR comments + reviews を取得</small>"]
+    S1 --> Check{指摘あり?}
+    Check -- "0件" --> NoIssue(["✅ 未解決の指摘なし"])
+    Check -- "あり" --> S2
+
+    S2["Step 2: 修正計画を表で提示"]
+    S2 --> Approve1{ユーザー承認?}
+    Approve1 -- "修正" --> S2
+    Approve1 -- Yes --> S3
+
+    S3["Step 3: 指摘ごとに修正＆コミット<br/><b>pr-fixer</b> × N回<br/><small>1指摘 = 1コミット</small>"]
+    S3 --> S4["Step 4: push"]
+    S4 --> S5["Step 5: 指摘コメントに<br/>コミットSHA を返信"]
+    S5 --> S6["Step 6: rules 反映候補を提示"]
+    S6 --> Approve2{ユーザー承認?}
+    Approve2 -- Yes --> Reflect["rules に反映・コミット・push"]
+    Approve2 -- "スキップ" --> Done
+    Reflect --> Done([完了])
 ```
 
 `/dev-flow` で PR を作成し、レビューが返ってきたら `/fix-pr` で対応する流れ。
 
 ---
 
+### `/review` — 他人の PR をレビュー
+
+PR の差分を取得し、選択した観点でレビューコメントの下書きを生成する。
+
+```
+/review 142
+/review #142 review:arch,sec
+```
+
+**フロー**
+
+```mermaid
+flowchart TD
+    Start(["/review #142"]) --> S1
+
+    S1{"Step 1: レビュワー選択<br/><small>引数で指定済みならスキップ</small>"}
+    S1 --> S2["Step 2: PR の差分取得<br/><small>gh pr diff / gh pr view</small>"]
+    S2 --> S3{"Step 3: 観点別レビュー"}
+
+    S3 -- "1人" --> Single["単独レビュー<br/><b>reviewer-*</b>"]
+    S3 -- "2人+" --> Parallel["Agent Teams 並列実行<br/><b>reviewer-* × N</b>"]
+
+    Single --> S4
+    Parallel --> S4
+
+    S4["Step 4: レビュー結果の統合・表示<br/>🔴 Must Fix / 🟡 Should Fix / 🟢 Good"]
+    S4 --> Done(["表示して終了<br/><small>GitHub への投稿はユーザー判断</small>"])
+```
+
+---
+
+### `/commit` — スマートコミット
+
+差分を分析し、適切な粒度でコミットを作成する。変更の「Why」をセッション履歴から推測し、不明なら質問する。
+
+```mermaid
+flowchart TD
+    Start(["/commit"]) --> S1["Step 1: git status / git diff で差分分析"]
+    S1 --> S2["Step 2: 論理単位でグルーピング"]
+    S2 --> Loop
+
+    subgraph Loop["Step 3: コミットごとに繰り返し"]
+        A["3a: git add（適切な粒度）"]
+        A --> B{3b: Why が推測できる?}
+        B -- Yes --> D
+        B -- No --> C["質問してWhyを把握"]
+        C --> D["3c: コミットメッセージ生成・コミット"]
+        D --> E{未ステージの変更あり?}
+        E -- Yes --> A
+    end
+
+    E -- No --> Done([完了])
+```
+
+---
+
+### `/component-template` — React コンポーネントの雛形生成
+
+「コンポーネント作って」「画面作って」と指示すると、プロジェクト規約（Functional Component / interface / MUI styled）に沿った雛形とテストファイルをセットで生成する。
+
+---
+
 ### `/pr-template` — PR 本文の生成
 
 PR 本文を規定フォーマット（概要 / 対応チケット / 変更内容 / 確認方法 / スクリーンショット）で生成する。`/dev-flow` 内でも自動的に使われる。
+
+---
+
+## 開発ライフサイクル
+
+スキル同士がどう繋がるかの全体図。
+
+```mermaid
+flowchart LR
+    Ticket["🎫 Jira チケット"]
+    Ticket --> DF["/dev-flow"]
+    DF --> PR["📋 Pull Request"]
+    PR --> Review["👀 レビュー指摘"]
+    Review --> FP["/fix-pr"]
+    FP --> PR
+
+    OtherPR["📋 他人の PR"] --> RV["/review"]
+    RV --> Comment["💬 レビュー下書き"]
+
+    style DF fill:#e94560,stroke:#333,color:#fff
+    style FP fill:#0f3460,stroke:#333,color:#fff
+    style RV fill:#533483,stroke:#333,color:#fff
+```
+
+---
+
+## 並列レビューの仕組み
+
+レビュワーを2人以上選んだ場合、Agent Teams で並列実行する。
+
+```mermaid
+flowchart TD
+    Code["実装済みコード"] --> Fork
+
+    Fork --> RA["reviewer-arch<br/>コンポーネント設計"]
+    Fork --> RP["reviewer-perf<br/>パフォーマンス"]
+    Fork --> RT["reviewer-test<br/>テストカバレッジ"]
+    Fork --> RS["reviewer-sec<br/>セキュリティ"]
+
+    RA --> Discuss["議論・統合<br/><small>矛盾の発見・見落とし補完</small>"]
+    RP --> Discuss
+    RT --> Discuss
+    RS --> Discuss
+
+    Discuss --> Result["統合レビュー結果<br/>🔴 Must Fix / 🟡 Should Fix / 🟢 Good"]
+```
+
+**コスト管理**: レビュワーはメンバー数分のトークンを消費する。用途に応じて選択する。
+
+| シーン                       | 推奨                   |
+| ---------------------------- | ---------------------- |
+| 小さい修正・typo             | `review:skip`          |
+| 通常の機能追加               | `review:arch`          |
+| パフォーマンスが気になる変更 | `review:arch,perf`     |
+| 認証・権限まわり             | `review:arch,sec,test` |
+| 大きなリファクタ             | `review:all`           |
 
 ---
 
@@ -103,9 +313,11 @@ PR 本文を規定フォーマット（概要 / 対応チケット / 変更内�
 │   └── pr-fixer.md                  # PR 指摘修正エージェント（Sonnet）
 ├── skills/
 │   ├── dev-flow/SKILL.md            # /dev-flow スキル
+│   ├── fix-pr/SKILL.md             # /fix-pr スキル
+│   ├── review/SKILL.md             # /review スキル
+│   ├── commit/SKILL.md             # /commit スキル
 │   ├── component-template/SKILL.md  # /component-template スキル
-│   ├── pr-template/SKILL.md        # /pr-template スキル
-│   └── fix-pr/SKILL.md             # /fix-pr スキル
+│   └── pr-template/SKILL.md        # /pr-template スキル
 └── settings.json                    # TypeScript チェックの自動実行フック
 ```
 
@@ -121,15 +333,3 @@ PR 本文を規定フォーマット（概要 / 対応チケット / 変更内�
 **並列レビューの仕組み**
 
 レビュワーを2人以上選んだ場合、Claude Code の Agent Teams 機能で並列実行する。各レビュワーは独立したコンテキストを持ち、互いの発見を共有・議論してからリーダーが統合する。1人のレビュワーでは起きない「観点間の矛盾の発見」が可能になる。
-
-**コスト管理**
-
-レビュワーはメンバー数分のトークンを消費する。用途に応じて選択する。
-
-| シーン                       | 推奨                   |
-| ---------------------------- | ---------------------- |
-| 小さい修正・typo             | `review:skip`          |
-| 通常の機能追加               | `review:arch`          |
-| パフォーマンスが気になる変更 | `review:arch,perf`     |
-| 認証・権限まわり             | `review:arch,sec,test` |
-| 大きなリファクタ             | `review:all`           |
