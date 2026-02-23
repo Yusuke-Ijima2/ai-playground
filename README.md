@@ -1,7 +1,6 @@
 # ai-playground
 
 Claude Code の設定・エージェント・スキルをまとめたプレイグラウンド。
-en-japan 採用プラットフォーム（Next.js / TypeScript / MUI / Redux Toolkit）向けの開発ワークフローを自動化する。
 
 ---
 
@@ -127,10 +126,10 @@ PR 本文を規定フォーマット（概要 / 対応チケット / 変更内�
 
 レビュワーはメンバー数分のトークンを消費する。用途に応じて選択する。
 
-| シーン | 推奨 |
-|---|---|
-| 小さい修正・typo | `review:skip` |
-| 通常の機能追加 | `review:arch` |
-| パフォーマンスが気になる変更 | `review:arch,perf` |
-| 認証・権限まわり | `review:arch,sec,test` |
-| 大きなリファクタ | `review:all` |
+| シーン                       | 推奨                   |
+| ---------------------------- | ---------------------- |
+| 小さい修正・typo             | `review:skip`          |
+| 通常の機能追加               | `review:arch`          |
+| パフォーマンスが気になる変更 | `review:arch,perf`     |
+| 認証・権限まわり             | `review:arch,sec,test` |
+| 大きなリファクタ             | `review:all`           |
